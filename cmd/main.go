@@ -44,4 +44,8 @@ func main() {
 
 	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
+
+	router.HandleFunc("/notifications/{user_id}/{room_id}/unread", handlers.GetUnreadCount).Methods("GET")
+	router.HandleFunc("/notifications/{user_id}/{room_id}/read", handlers.MarkMessagesAsRead).Methods("POST")
+
 }
