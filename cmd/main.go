@@ -20,18 +20,13 @@ func main() {
 	router.HandleFunc("/rooms", handlers.GetRooms).Methods("GET")
 	router.HandleFunc("/rooms", handlers.CreateRoom).Methods("POST")
 
-	// Message history route
+	// Message history and reactions
 	router.HandleFunc("/rooms/{room_id}/messages", handlers.GetMessageHistory).Methods("GET")
-
-	// Private messaging routes
-	router.HandleFunc("/private_messages", handlers.SendPrivateMessage).Methods("POST")
-	router.HandleFunc("/private_messages/{sender}/{receiver}", handlers.GetPrivateMessages).Methods("GET")
+	router.HandleFunc("/messages/{message_id}/reactions", handlers.GetReactions).Methods("GET")
+	router.HandleFunc("/reactions", handlers.AddReaction).Methods("POST")
 
 	// WebSocket route
 	router.HandleFunc("/ws", websockets.JoinRoom).Methods("GET")
-
-	// Start background worker
-	go startBackgroundWorker()
 
 	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
