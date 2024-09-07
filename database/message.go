@@ -1,21 +1,20 @@
 package database
 
 import (
-	"time"
+	"log"
 
-	"github.com/yourusername/gochat/models"
+	"github.com/Jay-SCM/gochat/models"
 )
 
-func SaveMessage(msg models.Message) error {
-	query := `INSERT INTO messages (room_id, username, content, created_at) VALUES (?, ?, ?, ?)`
-	_, err := DB.Exec(query, msg.RoomID, msg.Username, msg.Content, time.Now())
-	return err
-}
-
-func GetMessageHistory(roomID string) ([]models.Message, error) {
-	query := `SELECT id, room_id, username, content, created_at FROM messages WHERE room_id = ? ORDER BY created_at ASC`
-	rows, err := DB.Query(query, roomID)
+func GetMessages(roomID string) ([]models.Message, error) {
+	db, err := getDB()
 	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query("SELECT id, content, sender_id, created_at FROM messages WHERE room_id = ?", roomID)
+	if err != nil {
+		log.Println("Failed to get messages:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -23,11 +22,11 @@ func GetMessageHistory(roomID string) ([]models.Message, error) {
 	var messages []models.Message
 	for rows.Next() {
 		var msg models.Message
-		if err := rows.Scan(&msg.ID, &msg.RoomID, &msg.Username, &msg.Content, &msg.CreatedAt); err != nil {
+		if err := rows.Scan(&msg.ID, &msg.Content, &msg.SenderID, &msg.CreatedAt); err != nil {
+			log.Println("Failed to scan message:", err)
 			return nil, err
 		}
 		messages = append(messages, msg)
 	}
-
 	return messages, nil
 }

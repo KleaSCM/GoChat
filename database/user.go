@@ -1,12 +1,36 @@
 package database
 
 import (
-	"github.com/yourusername/gochat/models"
+	"log"
+
+	"github.com/Jay-SCM/gochat/models"
 )
 
-func GetUserByUsername(username string) (models.User, error) {
+func RegisterUser(user models.User) error {
+	db, err := getDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", user.Username, user.Password)
+	if err != nil {
+		log.Println("Failed to register user:", err)
+		return err
+	}
+	return nil
+}
+
+func GetUser(username string) (models.User, error) {
+	db, err := getDB()
+	if err != nil {
+		return models.User{}, err
+	}
+
 	var user models.User
-	query := `SELECT id, username, password FROM users WHERE username = ?`
-	err := DB.QueryRow(query, username).Scan(&user.ID, &user.Username, &user.Password)
-	return user, err
+	err = db.QueryRow("SELECT id, username, password FROM users WHERE username = ?", username).Scan(&user.ID, &user.Username, &user.Password)
+	if err != nil {
+		log.Println("Failed to get user:", err)
+		return models.User{}, err
+	}
+	return user, nil
 }

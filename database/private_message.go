@@ -1,23 +1,20 @@
 package database
 
 import (
-	"time"
+	"log"
 
-	"github.com/yourusername/gochat/models"
+	"github.com/Jay-SCM/gochat/models"
 )
 
-func SavePrivateMessage(msg models.PrivateMessage) error {
-	query := `INSERT INTO private_messages (sender, receiver, content, created_at) VALUES (?, ?, ?, ?)`
-	_, err := DB.Exec(query, msg.Sender, msg.Receiver, msg.Content, time.Now())
-	return err
-}
-
-func GetPrivateMessages(sender, receiver string) ([]models.PrivateMessage, error) {
-	query := `SELECT id, sender, receiver, content, created_at FROM private_messages 
-              WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)
-              ORDER BY created_at ASC`
-	rows, err := DB.Query(query, sender, receiver, receiver, sender)
+func GetPrivateMessages(userID string) ([]models.PrivateMessage, error) {
+	db, err := getDB()
 	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query("SELECT id, content, sender_id, receiver_id, created_at FROM private_messages WHERE receiver_id = ?", userID)
+	if err != nil {
+		log.Println("Failed to get private messages:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -25,11 +22,11 @@ func GetPrivateMessages(sender, receiver string) ([]models.PrivateMessage, error
 	var messages []models.PrivateMessage
 	for rows.Next() {
 		var msg models.PrivateMessage
-		if err := rows.Scan(&msg.ID, &msg.Sender, &msg.Receiver, &msg.Content, &msg.CreatedAt); err != nil {
+		if err := rows.Scan(&msg.ID, &msg.Content, &msg.SenderID, &msg.ReceiverID, &msg.CreatedAt); err != nil {
+			log.Println("Failed to scan private message:", err)
 			return nil, err
 		}
 		messages = append(messages, msg)
 	}
-
 	return messages, nil
 }

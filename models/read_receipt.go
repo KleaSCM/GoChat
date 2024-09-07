@@ -3,7 +3,7 @@ package models
 import "time"
 
 type ReadReceipt struct {
-	MessageID int       `json:"message_id"`
-	Username  string    `json:"username"`
+	MessageID string    `json:"message_id"`
+	UserID    string    `json:"user_id"`
 	ReadAt    time.Time `json:"read_at"`
 }

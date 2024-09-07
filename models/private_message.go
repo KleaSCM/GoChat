@@ -3,9 +3,9 @@ package models
 import "time"
 
 type PrivateMessage struct {
-	ID        int       `json:"id"`
-	Sender    string    `json:"sender"`
-	Receiver  string    `json:"receiver"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         string    `json:"id"`
+	Content    string    `json:"content"`
+	SenderID   string    `json:"sender_id"`
+	ReceiverID string    `json:"receiver_id"`
+	CreatedAt  time.Time `json:"created_at"`
 }

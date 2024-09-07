@@ -1,38 +1,32 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 )
 
-// UploadFile handles file uploads
 func UploadFile(w http.ResponseWriter, r *http.Request) {
-	file, header, err := r.FormFile("file")
+	file, _, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Unable to upload file", http.StatusBadRequest)
+		http.Error(w, "Failed to process file upload", http.StatusInternalServerError)
 		return
 	}
 	defer file.Close()
 
-	// Create the destination file in the "uploads" directory
-	dst, err := os.Create(filepath.Join("uploads", header.Filename))
+	out, err := os.Create(filepath.Join("uploads", filepath.Base(file.Name())))
 	if err != nil {
-		http.Error(w, "Unable to save file", http.StatusInternalServerError)
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
+	defer out.Close()
 
-	// Copy the uploaded file to the destination
-	if _, err := io.Copy(dst, file); err != nil {
-		http.Error(w, "Unable to save file", http.StatusInternalServerError)
+	_, err = io.Copy(out, file)
+	if err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
 		return
 	}
 
-	// Respond with the file URL
-	fileURL := fmt.Sprintf("/uploads/%s", header.Filename)
-	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, "File uploaded successfully: %s", fileURL)
+	w.WriteHeader(http.StatusOK)
 }

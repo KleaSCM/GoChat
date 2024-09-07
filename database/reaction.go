@@ -1,21 +1,34 @@
 package database
 
 import (
-	"time"
+	"log"
 
-	"github.com/yourusername/gochat/models"
+	"github.com/Jay-SCM/gochat/models"
 )
 
 func AddReaction(reaction models.Reaction) error {
-	query := `INSERT INTO reactions (message_id, username, emoji, created_at) VALUES (?, ?, ?, ?)`
-	_, err := DB.Exec(query, reaction.MessageID, reaction.Username, reaction.Emoji, time.Now())
-	return err
+	db, err := getDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("INSERT INTO reactions (message_id, user_id, type) VALUES (?, ?, ?)", reaction.MessageID, reaction.UserID, reaction.Type)
+	if err != nil {
+		log.Println("Failed to add reaction:", err)
+		return err
+	}
+	return nil
 }
 
-func GetReactionsByMessageID(messageID int) ([]models.Reaction, error) {
-	query := `SELECT id, message_id, username, emoji, created_at FROM reactions WHERE message_id = ?`
-	rows, err := DB.Query(query, messageID)
+func GetReactions(messageID string) ([]models.Reaction, error) {
+	db, err := getDB()
 	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query("SELECT message_id, user_id, type FROM reactions WHERE message_id = ?", messageID)
+	if err != nil {
+		log.Println("Failed to get reactions:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -23,11 +36,11 @@ func GetReactionsByMessageID(messageID int) ([]models.Reaction, error) {
 	var reactions []models.Reaction
 	for rows.Next() {
 		var reaction models.Reaction
-		if err := rows.Scan(&reaction.ID, &reaction.MessageID, &reaction.Username, &reaction.Emoji, &reaction.CreatedAt); err != nil {
+		if err := rows.Scan(&reaction.MessageID, &reaction.UserID, &reaction.Type); err != nil {
+			log.Println("Failed to scan reaction:", err)
 			return nil, err
 		}
 		reactions = append(reactions, reaction)
 	}
-
 	return reactions, nil
 }

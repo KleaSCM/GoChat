@@ -1,7 +1,7 @@
 package models
 
-type UnreadNotification struct {
-	UserID      int `json:"user_id"`
-	RoomID      int `json:"room_id"`
-	UnreadCount int `json:"unread_count"`
+type Notification struct {
+	UserID string `json:"user_id"`
+	RoomID string `json:"room_id"`
+	IsRead bool   `json:"is_read"`
 }

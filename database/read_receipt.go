@@ -1,21 +1,34 @@
 package database
 
 import (
-	"time"
+	"log"
 
-	"github.com/yourusername/gochat/models"
+	"github.com/Jay-SCM/gochat/models"
 )
 
 func SaveReadReceipt(receipt models.ReadReceipt) error {
-	query := `INSERT INTO read_receipts (message_id, username, read_at) VALUES (?, ?, ?)`
-	_, err := DB.Exec(query, receipt.MessageID, receipt.Username, time.Now())
-	return err
+	db, err := getDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec("INSERT INTO read_receipts (message_id, user_id, read_at) VALUES (?, ?, ?)", receipt.MessageID, receipt.UserID, receipt.ReadAt)
+	if err != nil {
+		log.Println("Failed to save read receipt:", err)
+		return err
+	}
+	return nil
 }
 
-func GetReadReceiptsByMessageID(messageID int) ([]models.ReadReceipt, error) {
-	query := `SELECT message_id, username, read_at FROM read_receipts WHERE message_id = ?`
-	rows, err := DB.Query(query, messageID)
+func GetReadReceipts(messageID string) ([]models.ReadReceipt, error) {
+	db, err := getDB()
 	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.Query("SELECT message_id, user_id, read_at FROM read_receipts WHERE message_id = ?", messageID)
+	if err != nil {
+		log.Println("Failed to get read receipts:", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -23,11 +36,11 @@ func GetReadReceiptsByMessageID(messageID int) ([]models.ReadReceipt, error) {
 	var receipts []models.ReadReceipt
 	for rows.Next() {
 		var receipt models.ReadReceipt
-		if err := rows.Scan(&receipt.MessageID, &receipt.Username, &receipt.ReadAt); err != nil {
+		if err := rows.Scan(&receipt.MessageID, &receipt.UserID, &receipt.ReadAt); err != nil {
+			log.Println("Failed to scan read receipt:", err)
 			return nil, err
 		}
 		receipts = append(receipts, receipt)
 	}
-
 	return receipts, nil
 }

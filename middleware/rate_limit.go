@@ -1,4 +1,4 @@
-package middlewares
+package middleware
 
 import (
 	"net/http"
@@ -6,24 +6,36 @@ import (
 	"time"
 )
 
-var userMessageLimit = make(map[string]time.Time)
-var mu sync.Mutex
+type RateLimiter struct {
+	mu       sync.Mutex
+	requests map[string]time.Time
+	limit    int
+	interval time.Duration
+}
 
-func RateLimit(next http.Handler) http.Handler {
+func NewRateLimiter(limit int, interval time.Duration) *RateLimiter {
+	return &RateLimiter{
+		requests: make(map[string]time.Time),
+		limit:    limit,
+		interval: interval,
+	}
+}
+
+func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		username := r.Header.Get("X-Username")
+		rl.mu.Lock()
+		defer rl.mu.Unlock()
 
-		mu.Lock()
-		defer mu.Unlock()
-
-		if lastMessageTime, exists := userMessageLimit[username]; exists {
-			if time.Since(lastMessageTime) < 2*time.Second {
-				http.Error(w, "Too many messages, slow down", http.StatusTooManyRequests)
+		ip := r.RemoteAddr
+		now := time.Now()
+		if lastRequest, exists := rl.requests[ip]; exists {
+			if now.Sub(lastRequest) < rl.interval {
+				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
 		}
 
-		userMessageLimit[username] = time.Now()
+		rl.requests[ip] = now
 		next.ServeHTTP(w, r)
 	})
 }
