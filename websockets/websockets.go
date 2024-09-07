@@ -7,56 +7,50 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type TypingIndicator struct {
+type Presence struct {
 	Username string `json:"username"`
-	RoomID   string `json:"room_id"`
-	Typing   bool   `json:"typing"`
+	Online   bool   `json:"online"`
 }
 
-func broadcastTypingStatus(room *Room, typingStatus TypingIndicator) {
+func broadcastPresence(room *Room, presence Presence) {
 	room.Mux.Lock()
 	defer room.Mux.Unlock()
 
-	statusMessage, err := json.Marshal(typingStatus)
+	statusMessage, err := json.Marshal(presence)
 	if err != nil {
-		log.Println("Error marshalling typing status:", err)
+		log.Println("Error marshalling presence status:", err)
 		return
 	}
 
 	for conn := range room.Clients {
 		err := conn.WriteMessage(websocket.TextMessage, statusMessage)
 		if err != nil {
-			log.Println("Error sending typing status:", err)
+			log.Println("Error sending presence status:", err)
 			conn.Close()
 			delete(room.Clients, conn)
 		}
 	}
 }
 
-func handleMessages(conn *websocket.Conn, room *Room) {
+func handleConnection(conn *websocket.Conn, room *Room, username string) {
 	defer func() {
 		room.Mux.Lock()
 		delete(room.Clients, conn)
 		room.Mux.Unlock()
+
+		// Broadcast user is offline
+		broadcastPresence(room, Presence{Username: username, Online: false})
 		conn.Close()
 	}()
 
+	// Broadcast user is online
+	broadcastPresence(room, Presence{Username: username, Online: true})
+
 	for {
-		_, msg, err := conn.ReadMessage()
+		_, _, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Error reading message:", err)
 			break
 		}
-
-		// Check if it's a typing indicator
-		var typingIndicator TypingIndicator
-		if err := json.Unmarshal(msg, &typingIndicator); err == nil && typingIndicator.Typing {
-			// Broadcast typing status
-			broadcastTypingStatus(room, typingIndicator)
-			continue
-		}
-
-		// Handle regular chat message
-		broadcastMessage(room, msg)
 	}
 }
