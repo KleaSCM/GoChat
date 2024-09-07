@@ -20,7 +20,10 @@ func main() {
 	router.HandleFunc("/rooms", handlers.GetRooms).Methods("GET")
 	router.HandleFunc("/rooms", handlers.CreateRoom).Methods("POST")
 
-	// Authenticated WebSocket route
+	// Message history route
+	router.HandleFunc("/rooms/{room_id}/messages", handlers.GetMessageHistory).Methods("GET")
+
+	// WebSocket route
 	router.HandleFunc("/ws", websockets.JoinRoom).Methods("GET")
 
 	log.Println("Server started on :8080")
