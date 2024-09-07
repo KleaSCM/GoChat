@@ -5,44 +5,58 @@ import (
 	"log"
 
 	"github.com/gorilla/websocket"
-	"github.com/yourusername/gochat/database"
-	"github.com/yourusername/gochat/models"
 )
 
-type IncomingMessage struct {
+type TypingIndicator struct {
 	Username string `json:"username"`
-	Content  string `json:"content"`
 	RoomID   string `json:"room_id"`
+	Typing   bool   `json:"typing"`
 }
 
-func broadcastMessage(room *Room, msg []byte) {
+func broadcastTypingStatus(room *Room, typingStatus TypingIndicator) {
 	room.Mux.Lock()
 	defer room.Mux.Unlock()
 
-	var incomingMsg IncomingMessage
-	err := json.Unmarshal(msg, &incomingMsg)
+	statusMessage, err := json.Marshal(typingStatus)
 	if err != nil {
-		log.Println("Error parsing incoming message:", err)
+		log.Println("Error marshalling typing status:", err)
 		return
 	}
 
-	// Broadcast message to all clients in the room
 	for conn := range room.Clients {
-		err := conn.WriteMessage(websocket.TextMessage, msg)
+		err := conn.WriteMessage(websocket.TextMessage, statusMessage)
 		if err != nil {
-			log.Println("Error sending message:", err)
+			log.Println("Error sending typing status:", err)
 			conn.Close()
 			delete(room.Clients, conn)
 		}
 	}
+}
 
-	// Save the message to the database
-	message := models.Message{
-		RoomID:   incomingMsg.RoomID,
-		Username: incomingMsg.Username,
-		Content:  incomingMsg.Content,
-	}
-	if err := database.SaveMessage(message); err != nil {
-		log.Println("Error saving message:", err)
+func handleMessages(conn *websocket.Conn, room *Room) {
+	defer func() {
+		room.Mux.Lock()
+		delete(room.Clients, conn)
+		room.Mux.Unlock()
+		conn.Close()
+	}()
+
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("Error reading message:", err)
+			break
+		}
+
+		// Check if it's a typing indicator
+		var typingIndicator TypingIndicator
+		if err := json.Unmarshal(msg, &typingIndicator); err == nil && typingIndicator.Typing {
+			// Broadcast typing status
+			broadcastTypingStatus(room, typingIndicator)
+			continue
+		}
+
+		// Handle regular chat message
+		broadcastMessage(room, msg)
 	}
 }
