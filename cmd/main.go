@@ -48,4 +48,7 @@ func main() {
 	router.HandleFunc("/notifications/{user_id}/{room_id}/unread", handlers.GetUnreadCount).Methods("GET")
 	router.HandleFunc("/notifications/{user_id}/{room_id}/read", handlers.MarkMessagesAsRead).Methods("POST")
 
+	router.HandleFunc("/profile", handlers.SaveUserProfile).Methods("POST")
+	router.HandleFunc("/profile", handlers.GetUserProfile).Methods("GET")
+
 }
