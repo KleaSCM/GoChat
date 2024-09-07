@@ -23,6 +23,10 @@ func main() {
 	// Message history route
 	router.HandleFunc("/rooms/{room_id}/messages", handlers.GetMessageHistory).Methods("GET")
 
+	// Private messaging routes
+	router.HandleFunc("/private_messages", handlers.SendPrivateMessage).Methods("POST")
+	router.HandleFunc("/private_messages/{sender}/{receiver}", handlers.GetPrivateMessages).Methods("GET")
+
 	// WebSocket route
 	router.HandleFunc("/ws", websockets.JoinRoom).Methods("GET")
 
