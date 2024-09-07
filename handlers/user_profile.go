@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Jay-SCM/gochat/database"
+	"github.com/Jay-SCM/gochat/models"
 	"github.com/gorilla/mux"
-	"github.com/yourusername/gochat/database"
-	"github.com/yourusername/gochat/models"
 )
 
 func SaveUserProfile(w http.ResponseWriter, r *http.Request) {

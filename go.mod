@@ -1,4 +1,4 @@
-module github.com/Jay-SCM/GoChat
+module github.com/Jay-SCM/gochat
 
 go 1.23.0
 
