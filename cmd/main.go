@@ -16,7 +16,11 @@ func main() {
 	router.HandleFunc("/register", handlers.Register).Methods("POST")
 	router.HandleFunc("/login", handlers.Login).Methods("POST")
 
-	// Authenticated WebSocket route (room ID required)
+	// Chat room routes
+	router.HandleFunc("/rooms", handlers.GetRooms).Methods("GET")
+	router.HandleFunc("/rooms", handlers.CreateRoom).Methods("POST")
+
+	// Authenticated WebSocket route
 	router.HandleFunc("/ws", websockets.JoinRoom).Methods("GET")
 
 	log.Println("Server started on :8080")
