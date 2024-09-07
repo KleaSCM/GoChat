@@ -26,6 +26,9 @@ func main() {
 	// WebSocket route
 	router.HandleFunc("/ws", websockets.JoinRoom).Methods("GET")
 
+	// Start background worker
+	go startBackgroundWorker()
+
 	log.Println("Server started on :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
