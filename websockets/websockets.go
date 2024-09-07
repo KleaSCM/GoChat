@@ -1,90 +1,32 @@
 package websockets
 
 import (
+	"encoding/json"
 	"log"
-	"net/http"
-	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/yourusername/gochat/database"
+	"github.com/yourusername/gochat/models"
 )
 
-// WebSocket Upgrader: upgrades the HTTP connection to a WebSocket
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all connections (optional: implement stricter checks)
-	},
+type IncomingMessage struct {
+	Username string `json:"username"`
+	Content  string `json:"content"`
+	RoomID   string `json:"room_id"`
 }
 
-// Struct for managing chat room clients
-type Room struct {
-	ID      string
-	Clients map[*websocket.Conn]bool
-	Mux     sync.Mutex
-}
-
-var rooms = make(map[string]*Room)
-
-// JoinRoom handles WebSocket connections for chat rooms
-func JoinRoom(w http.ResponseWriter, r *http.Request) {
-	roomID := r.URL.Query().Get("room_id")
-
-	// Upgrade the connection to WebSocket
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Error upgrading to WebSocket:", err)
-		return
-	}
-
-	// Find or create the room
-	room, exists := rooms[roomID]
-	if !exists {
-		room = &Room{
-			ID:      roomID,
-			Clients: make(map[*websocket.Conn]bool),
-		}
-		rooms[roomID] = room
-	}
-
-	// Add the client to the room
-	room.Mux.Lock()
-	room.Clients[conn] = true
-	room.Mux.Unlock()
-
-	log.Printf("User joined room: %s", roomID)
-
-	// Listen for incoming messages
-	go handleMessages(conn, room)
-}
-
-func handleMessages(conn *websocket.Conn, room *Room) {
-	defer func() {
-		// Cleanup when a user disconnects
-		room.Mux.Lock()
-		delete(room.Clients, conn)
-		room.Mux.Unlock()
-		conn.Close()
-	}()
-
-	for {
-		// Read message from WebSocket
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error reading message:", err)
-			break
-		}
-
-		// Broadcast message to all clients in the room
-		broadcastMessage(room, msg)
-	}
-}
-
-// Broadcast message to all clients in the room
 func broadcastMessage(room *Room, msg []byte) {
 	room.Mux.Lock()
 	defer room.Mux.Unlock()
 
+	var incomingMsg IncomingMessage
+	err := json.Unmarshal(msg, &incomingMsg)
+	if err != nil {
+		log.Println("Error parsing incoming message:", err)
+		return
+	}
+
+	// Broadcast message to all clients in the room
 	for conn := range room.Clients {
 		err := conn.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
@@ -92,5 +34,15 @@ func broadcastMessage(room *Room, msg []byte) {
 			conn.Close()
 			delete(room.Clients, conn)
 		}
+	}
+
+	// Save the message to the database
+	message := models.Message{
+		RoomID:   incomingMsg.RoomID,
+		Username: incomingMsg.Username,
+		Content:  incomingMsg.Content,
+	}
+	if err := database.SaveMessage(message); err != nil {
+		log.Println("Error saving message:", err)
 	}
 }
